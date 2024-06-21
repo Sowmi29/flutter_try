@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:http/http.dart' as http;
+import 'dart:convert';
 
 void main() {
   runApp(MyApp());
@@ -17,8 +19,65 @@ class MyApp extends StatelessWidget {
   }
 }
 
-class FirstScreen extends StatelessWidget {
+class FirstScreen extends StatefulWidget {
+  @override
+  _FirstScreenState createState() => _FirstScreenState();
+}
+
+class _FirstScreenState extends State<FirstScreen> {
   final TextEditingController _controller = TextEditingController();
+  String _responseMessage = '';
+
+  Future<void> _submitText() async {
+    final response = await http.post(
+      Uri.parse('http://your-xampp-server/add_text.php'), // Replace with your XAMPP server URL
+      headers: <String, String>{
+        'Content-Type': 'application/json; charset=UTF-8',
+      },
+      body: jsonEncode(<String, String>{
+        'text': _controller.text,
+      }),
+    );
+
+    if (response.statusCode == 200) {
+      final responseData = jsonDecode(response.body);
+      setState(() {
+        _responseMessage = responseData['status'];
+      });
+      if (responseData['status'] == 'success') {
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (context) => SecondScreen(),
+          ),
+        );
+      } else {
+        _showErrorDialog(responseData['message']);
+      }
+    } else {
+      _showErrorDialog('Failed to submit text');
+    }
+  }
+
+  void _showErrorDialog(String message) {
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: Text('Error'),
+          content: Text(message),
+          actions: <Widget>[
+            TextButton(
+              child: Text('OK'),
+              onPressed: () {
+                Navigator.of(context).pop();
+              },
+            ),
+          ],
+        );
+      },
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -40,16 +99,11 @@ class FirstScreen extends StatelessWidget {
             ),
             SizedBox(height: 20),
             ElevatedButton(
-              onPressed: () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (context) => SecondScreen(),
-                  ),
-                );
-              },
+              onPressed: _submitText,
               child: Text('Submit'),
             ),
+            SizedBox(height: 20),
+            Text(_responseMessage),
           ],
         ),
       ),
